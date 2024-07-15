@@ -1,60 +1,67 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-//import "hardhat/console.sol";
-
 contract Assessment {
-    address payable public owner;
-    uint256 public balance;
+  address payable public recipient;
+  uint256 public balance;
 
-    event Deposit(uint256 amount);
-    event Withdraw(uint256 amount);
+  error InsufficientBalance(uint256 balance, uint256 withdrawAmount);
 
-    constructor(uint initBalance) payable {
-        owner = payable(msg.sender);
-        balance = initBalance;
+  event Deposit(uint256 amount);
+  event Withdraw(uint256 amount);
+
+  // Stores a simple transaction struct (type and amount)
+  struct Transaction {
+    string txType;
+    uint256 amount;
+  }
+
+  // Array to store transactions (limited functionality)
+  Transaction[] public transactions;
+
+  constructor(uint initBalance) payable {
+    recipient = payable(msg.sender);
+    balance = initBalance;
+  }
+
+  function getBalance() public view returns (uint256) {
+    return balance;
+  }
+
+  function deposit(uint256 _amount) public payable {
+    uint _previousBalance = balance;
+
+    balance += _amount;
+
+    assert(balance == _previousBalance + _amount);
+
+    emit Deposit(_amount);
+
+    // Add deposit transaction to history
+    transactions.push(Transaction("Deposit", _amount));
+  }
+
+  function withdraw(uint256 _withdrawAmount) public {
+    uint _previousBalance = balance;
+    if (balance < _withdrawAmount) {
+      revert InsufficientBalance({
+        balance: balance,
+        withdrawAmount: _withdrawAmount
+      });
     }
 
-    function getBalance() public view returns(uint256){
-        return balance;
-    }
+    balance -= _withdrawAmount;
 
-    function deposit(uint256 _amount) public payable {
-        uint _previousBalance = balance;
+    assert(balance == (_previousBalance - _withdrawAmount));
 
-        // make sure this is the owner
-        require(msg.sender == owner, "You are not the owner of this account");
+    emit Withdraw(_withdrawAmount);
 
-        // perform transaction
-        balance += _amount;
+    // Add withdrawal transaction to history
+    transactions.push(Transaction("Withdrawal", _withdrawAmount));
+  }
 
-        // assert transaction completed successfully
-        assert(balance == _previousBalance + _amount);
-
-        // emit the event
-        emit Deposit(_amount);
-    }
-
-    // custom error
-    error InsufficientBalance(uint256 balance, uint256 withdrawAmount);
-
-    function withdraw(uint256 _withdrawAmount) public {
-        require(msg.sender == owner, "You are not the owner of this account");
-        uint _previousBalance = balance;
-        if (balance < _withdrawAmount) {
-            revert InsufficientBalance({
-                balance: balance,
-                withdrawAmount: _withdrawAmount
-            });
-        }
-
-        // withdraw the given amount
-        balance -= _withdrawAmount;
-
-        // assert the balance is correct
-        assert(balance == (_previousBalance - _withdrawAmount));
-
-        // emit the event
-        emit Withdraw(_withdrawAmount);
-    }
+  // Function to retrieve transactions
+  function getTransactions() public view returns (Transaction[] memory) {
+    return transactions;
+  }
 }
